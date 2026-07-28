@@ -1,5 +1,5 @@
 /**
- * 🌸 二次元可爱风个人导航站
+ * 🌸 个人导航站
  * Cloudflare Workers + KV
  * 作者：开源友好版
  * GitHub 可直接上传此文件
@@ -166,7 +166,7 @@ async function handleHome(request, env) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🌸 我的二次元导航</title>
+  <title>🌸 我的导航</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -375,7 +375,7 @@ async function handleHome(request, env) {
   <div class="container">
     <header>
       <div class="avatar">🦄</div>
-      <h1>我的二次元小窝</h1>
+      <h1>我的小窝</h1>
       <p class="subtitle">点击卡片即可跳转 ~ (｡･ω･｡)ﾉ♡</p>
     </header>
 
@@ -512,7 +512,7 @@ async function handleAdmin(request, env, path) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>管理后台 · 二次元导航</title>
+  <title>管理后台 · 导航</title>
   <style>
     :root {
       --primary: #8b5cf6;
