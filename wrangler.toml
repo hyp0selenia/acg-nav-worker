@@ -1,0 +1,18 @@
+name = "anime-nav"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# 部署后请在 Cloudflare Dashboard 绑定真实的 KV
+[[kv_namespaces]]
+binding = "NAV"
+id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"          # 部署后替换为真实 ID
+# preview_id = "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"  # 可选
+
+# 可选：以后要用 R2 就取消注释
+# [[r2_buckets]]
+# binding = "R2"
+# bucket_name = "your-bucket-name"
+
+[vars]
+# 这里不要放密码！密码必须用 Secret
