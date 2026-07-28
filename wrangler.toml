@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 # 部署后请在 Cloudflare Dashboard 绑定真实的 KV
 [[kv_namespaces]]
 binding = "NAV"
-id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"          # 部署后替换为真实 ID
+id = "2aa3991c0fca442b8d5eae3ad1e77aa4"          # 部署后替换为真实 ID
 # preview_id = "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"  # 可选
 
 # 可选：以后要用 R2 就取消注释
