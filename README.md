@@ -1,6 +1,6 @@
 # 🌸 个人导航站
 
-基于 Cloudflare Workers + KV 的轻量级二次元风格个人导航页面。
+基于 Cloudflare Workers + KV 的轻量级个人导航页面。
 
 支持后台增删改链接，密码鉴权。
 
