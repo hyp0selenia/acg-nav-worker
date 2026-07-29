@@ -39,7 +39,7 @@ async function getLinks(env) {
     {
       id: crypto.randomUUID(),
       title: "🕊️ 鸽子窝",
-      url: "https://hyposelenia.dpdns.org,
+      url: "https://hyposelenia.dpdns.org",
       desc: "咕咕咕",
       icon: "🕊️",
       color: "#000000",
@@ -47,7 +47,7 @@ async function getLinks(env) {
     {
       id: crypto.randomUUID(),
       title: "这是测试",
-      url: "https://github.com/hyp0selenia/acg-nav-worker"",
+      url: "https://github.com/hyp0selenia/acg-nav-worker",
       desc: "这是描述",
       icon: "这是emoji",
       color: "#ffffff",
