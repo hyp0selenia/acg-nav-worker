@@ -362,13 +362,13 @@ async function handleHome(request, env) {
 </head>
 <body>
   <div class="bg-deco">
-    <span>🍥</span><span>✨</span><span>🎀</span><span>💖</span><span>🌟</span>
+    <span>🍥</span><span>🏳️‍⚧️</span><span>🏳️‍🌈</span><span>⚧</span><span>💕</span>
   </div>
 
   <div class="container">
     <header>
       <div class="avatar">🍥</div>
-      <h1>我的小窝</h1>
+      <h1>🕊️ 鸽子窝</h1>
       <p class="subtitle">点击卡片即可跳转 ~ (｡･ω･｡)ﾉ♡</p>
     </header>
 
