@@ -38,19 +38,19 @@ async function getLinks(env) {
   const defaultLinks = [
     {
       id: crypto.randomUUID(),
-      title: "R2 网盘",
-      url: "https://wuwenzhen.hyposelenia.dpdns.org",
-      desc: "我的 R2 云盘",
-      icon: "☁️",
-      color: "#a78bfa",
+      title: "🕊️ 鸽子窝",
+      url: "https://hyposelenia.dpdns.org,
+      desc: "咕咕咕",
+      icon: "🕊️",
+      color: "#000000",
     },
     {
       id: crypto.randomUUID(),
-      title: "小鸽子 Video",
-      url: "https://columbina.hyposelenia.dpdns.org",
-      desc: "小鸽子的视频站",
-      icon: "🎬",
-      color: "#f472b6",
+      title: "这是测试",
+      url: "https://github.com/hyp0selenia/acg-nav-worker"",
+      desc: "这是描述",
+      icon: "这是emoji",
+      color: "#ffffff",
     },
   ];
   await env.NAV.put("links", JSON.stringify(defaultLinks));
@@ -159,7 +159,7 @@ async function handleHome(request, env) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🍥 我的导航</title>
+  <title>🕊️ 鸽子窝</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -505,7 +505,7 @@ async function handleAdmin(request, env, path) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>管理后台 · 导航</title>
+  <title>管理后台 · 🕊️ 鸽子窝</title>
   <style>
     :root {
       --primary: #8b5cf6;
