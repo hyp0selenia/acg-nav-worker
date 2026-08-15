@@ -34,4 +34,4 @@ npx wrangler login
 npx wrangler dev
 ```
 ---
-Powered by 🐋 DeepSeek v4
+100% AI Generated
