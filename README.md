@@ -34,4 +34,5 @@ npx wrangler login
 npx wrangler dev
 ```
 ---
+## AI
 100% AI Generated
