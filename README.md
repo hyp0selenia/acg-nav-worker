@@ -22,7 +22,7 @@
 - 进入 **Variables and Secrets** → **Secrets**
 - 添加 Secret：
   - 名称：`ADMIN_PASSWORD`
-  - 值：你的密码（例如 `mypassword123`）
+  - 值：你的密码（例如 `mypass123`）
 
 完成后重新部署一次即可生效。
 
