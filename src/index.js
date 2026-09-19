@@ -39,7 +39,7 @@ async function getLinks(env) {
     {
       id: crypto.randomUUID(),
       title: "🕊️ 鸽子窝",
-      url: "https://hyposelenia.dpdns.org",
+      url: "https://github.com/hyp0selenia/acg-nav-worker",
       desc: "咕咕咕",
       icon: "🕊️",
       color: "#000000",
@@ -67,8 +67,8 @@ function checkAuth(request, env) {
   try {
     const decoded = atob(auth.slice(6));
     const [user, pass] = decoded.split(":");
-    // 用户名固定为 admin，密码用环境变量
-    return user === "admin" && pass === (env.ADMIN_PASSWORD || "admin123");
+    // 用户名密码用环境变量
+    return user === (env.ADMIN_USERNAME || "admin" && pass === (env.ADMIN_PASSWORD || "admin123");
   } catch {
     return false;
   }
