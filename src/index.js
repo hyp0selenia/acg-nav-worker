@@ -68,7 +68,8 @@ function checkAuth(request, env) {
     const decoded = atob(auth.slice(6));
     const [user, pass] = decoded.split(":");
     // 用户名密码用环境变量
-    return user === (env.ADMIN_USERNAME || "admin" && pass === (env.ADMIN_PASSWORD || "admin123");
+    return user === (env.ADMIN_USERNAME || "admin") &&
+           pass === (env.ADMIN_PASSWORD || "admin123");
   } catch {
     return false;
   }
@@ -662,7 +663,7 @@ async function handleAdmin(request, env, path) {
   </div>
 
   <script>
-    const authHeader = "Basic " + btoa("admin:" + prompt("请再次确认密码（仅本次会话）") || "");
+    const authHeader = "Basic " + btoa("admin:" + (prompt("请再次确认密码（仅本次会话）") || ""));
 
     // 保存
     document.querySelectorAll(".btn-save").forEach(btn => {
