@@ -458,8 +458,8 @@ async function handleAdmin(request, env, path) {
 <body>
   <div class="box">
     <h2>🔐 管理后台</h2>
-    <p>正在登录</p>
-    <p style="font-size:0.85rem;color:#a78bfa;">如果没有弹出登录框，请更换浏览器</p>
+    <p>正在登录...</p>
+    <p style="font-size:0.85rem;color:#a78bfa;">如果没有弹出登录框，请<b>更换浏览器</b></p>
   </div>
   <script>
     // 触发浏览器 Basic Auth 弹窗
