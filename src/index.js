@@ -378,7 +378,7 @@ async function handleHome(request, env) {
     </div>
 
     <footer>
-      Made with 💕 · <a href="/admin">管理后台</a>
+      100% AI Generated · <a href="/admin">管理后台</a>
     </footer>
   </div>
 </body>
@@ -458,8 +458,8 @@ async function handleAdmin(request, env, path) {
 <body>
   <div class="box">
     <h2>🔐 管理后台</h2>
-    <p>请使用浏览器弹出的登录框输入<br>用户名 <b>admin</b> + 你的密码</p>
-    <p style="font-size:0.85rem;color:#a78bfa;">如果没有弹出登录框，请刷新页面</p>
+    <p>正在登录</p>
+    <p style="font-size:0.85rem;color:#a78bfa;">如果没有弹出登录框，请更换浏览器</p>
   </div>
   <script>
     // 触发浏览器 Basic Auth 弹窗
