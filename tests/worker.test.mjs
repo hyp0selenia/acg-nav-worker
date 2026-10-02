@@ -161,6 +161,26 @@ check("the home page shows the saved title", (await (await call("/")).text()).in
    ========================================================= */
 section("2. 添加 / 删除");
 
+// 站点图标：三个页面都要有，且必须是能真正画出来的合法 SVG
+for (const [label, path] of [["首页", "/"], ["登录页", "/admin"], ["后台", "/admin"]]) {
+  const page = await (await call(path)).text();
+  const icons = page.match(/rel="icon"/g) || [];
+  const m = /<link rel="icon" href="([^"]+)"/.exec(page);
+  let svg = "";
+  if (m) {
+    try {
+      svg = decodeURIComponent(m[1].replace(/^data:image\/svg\+xml,/, ""));
+    } catch (err) {
+      svg = "";
+    }
+  }
+  check(
+    `${label} 有且只有一个 🕊 图标`,
+    icons.length === 1 && /^<svg[\s\S]*<\/svg>$/.test(svg) && svg.includes("🕊"),
+    `icons=${icons.length} svg=${JSON.stringify(svg.slice(0, 70))}`
+  );
+}
+
 res = await post("/api/links", { title: "新链接", url: "https://example.com", desc: "测试", icon: "🆕", color: "#123456" });
 const created = await json(res);
 check("POST /api/links creates a link", res.status === 201 && created && created.id, `status=${res.status}`);

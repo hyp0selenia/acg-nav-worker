@@ -594,6 +594,23 @@ async function handleApiLinks(request, env) {
 
 const SITE_NAME = "鸽子窝";
 
+// 站点图标：直接用鸽子 emoji，不额外占一个静态文件。
+//
+// 两个容易踩的点，别删：
+// 1) 必须保留 emoji 后面的变体选择符 U+FE0F。少了它浏览器会渲染成黑白线稿
+//    （实测对比过：带 VS16 是彩色鸽子，不带是纯黑轮廓）。
+// 2) 用 SVG 内嵌 emoji 文本，而不是把 emoji 直接塞进 data URI 裸文本里 ——
+//    后者在部分浏览器会因为编码问题画不出来。
+const FAVICON =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
+      `<text x="50" y="52" font-size="84" text-anchor="middle" dominant-baseline="central">🕊️</text>` +
+      `</svg>`
+  );
+
+const FAVICON_LINK = `<link rel="icon" href="${FAVICON}">`;
+
 // 全站共用的样式。手写 CSS + 设计变量，不引外部 UI 库也不拉远程字体。
 // 全站共用的样式。手写 CSS + 设计变量，不引外部 UI 库也不拉远程字体。
 // 配色走暖色 ACG 风：粉紫渐变 + 柔和圆角，但不堆砌动效。
@@ -872,12 +889,12 @@ async function handleHome(request, env) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>${escapeHtml(SITE_NAME)}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f46e5'/><circle cx='16' cy='16' r='5' fill='white'/></svg>">
+  ${FAVICON_LINK}
   <style>${APP_CSS}</style>
 </head>
 <body>
   <div class="bg-deco" aria-hidden="true">
-    <span>🍥</span><span>💜</span><span>✨</span><span>🌸</span><span>⭐</span>
+    <span>🕊</span><span>💜</span><span>✨</span><span>🌸</span><span>⭐</span>
   </div>
 
   <div class="shell">
@@ -888,7 +905,7 @@ async function handleHome(request, env) {
 
     <main>
       <div class="hero">
-        <div class="avatar" aria-hidden="true">🍥</div>
+        <div class="avatar" aria-hidden="true">🕊</div>
         <div>
           <h1 class="display">常用站点</h1>
           <p class="lede">点击卡片即可跳转 ~ (｡･ω･｡)ﾉ♡</p>
@@ -1336,6 +1353,7 @@ const LOGIN_PAGE = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>登录 · ${SITE_NAME}</title>
+  ${FAVICON_LINK}
   <meta name="robots" content="noindex">
   <style>${APP_CSS}${AUTH_CSS}</style>
 </head>
@@ -1343,7 +1361,7 @@ const LOGIN_PAGE = `<!DOCTYPE html>
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="auth-head">
-        <span class="auth-mark" aria-hidden="true">🍥</span>
+        <span class="auth-mark" aria-hidden="true">🕊</span>
         <div>
           <h1>登录管理后台</h1>
           <p>${SITE_NAME}</p>
@@ -1491,6 +1509,7 @@ async function handleAdmin(request, env) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>管理后台 · ${escapeHtml(SITE_NAME)}</title>
+  ${FAVICON_LINK}
   <meta name="robots" content="noindex">
   <style>${APP_CSS}${ADMIN_CSS}</style>
 </head>
