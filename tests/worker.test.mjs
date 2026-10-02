@@ -24,6 +24,8 @@ ENV.NAV = {
   },
 };
 
+
+
 const worker = (await import("../src/index.js")).default;
 const BASE = "https://nav.example.workers.dev";
 
@@ -99,11 +101,14 @@ check(
   null
 );
 
-res = await post("/api/login", { password: "wrong-password" });
+res = await post("/api/login", { username: "admin", password: "wrong-password" });
 check("login with a wrong password is rejected (401)", res.status === 401, `status=${res.status}`);
 
-res = await post("/api/login", { password: PASSWORD });
-check("login with the correct password succeeds", res.status === 200, `status=${res.status}`);
+res = await post("/api/login", { username: "nobody", password: PASSWORD });
+check("login with a wrong username is rejected (401)", res.status === 401, `status=${res.status}`);
+
+res = await post("/api/login", { username: "admin", password: PASSWORD });
+check("login with the correct username + password succeeds", res.status === 200, `status=${res.status}`);
 const setCookie = res.headers.get("Set-Cookie") || "";
 check(
   "session cookie is HttpOnly + SameSite=Strict + Secure on https",
@@ -112,12 +117,22 @@ check(
 );
 check("cookie jar holds a session", jar.has("nav_session"), `cookies=[${[...jar.keys()]}]`);
 
+res = await call("/api/me");
+const me = await json(res);
+check("GET /api/me reports the logged-in username", res.status === 200 && me && me.username === "admin", JSON.stringify(me));
+
 res = await call("/admin");
 const adminHtml = await res.text();
 check(
   "GET /admin with the session renders the editor",
   res.status === 200 && /add-form/.test(adminHtml) && /btn-save/.test(adminHtml),
   `status=${res.status}`
+);
+check("the admin page shows who is logged in", adminHtml.includes("admin"), null);
+check(
+  "the login page asks for a username as well as a password",
+  /id="user"/.test(loginHtml) && /id="pw"/.test(loginHtml),
+  null
 );
 
 const links = await json(await call("/api/links"));
@@ -209,11 +224,12 @@ const decodedToken = Buffer.from(
   "base64"
 ).toString("utf8");
 const SESSION_DAYS = 30;
-const expPart = decodedToken.split("|")[0];
+const [genPart, expPart, sigPart] = decodedToken.split("|");
+check("the token is gen|exp|sig", Boolean(genPart && expPart && sigPart), `decoded=${decodedToken.slice(0, 40)}...`);
 check(
   `the session token carries a ${SESSION_DAYS}-day expiry`,
   Number(expPart) === FIXED_NOW + SESSION_DAYS * 24 * 60 * 60 * 1000,
-  `exp=${expPart} expected=${FIXED_NOW + SESSION_DAYS * 24 * 60 * 60 * 1000}`
+  `gen=${genPart} exp=${expPart} expected=${FIXED_NOW + SESSION_DAYS * 24 * 60 * 60 * 1000}`
 );
 
 // Still valid just before it lapses...
@@ -251,29 +267,130 @@ const rotatedRes = await worker.fetch(
 );
 check("changing ADMIN_PASSWORD invalidates old sessions", rotatedRes.status === 401, `status=${rotatedRes.status}`);
 
+/* =========================================================
+   3b. 退出登录 / 换账号 —— 这条链路以前是坏的
+   ========================================================= */
+section("3b. 退出后换账号");
+
+// 旧版本支持 HTTP Basic，而浏览器会把 Basic 凭据缓存起来并对同源请求自动重发，
+// 于是「退出退不掉、换账号也登不进」。现在必须彻底不认 Basic。
 const basic = "Basic " + Buffer.from(`admin:${PASSWORD}`).toString("base64");
 res = await worker.fetch(
   new Request(BASE + "/api/links", {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: basic },
-    body: JSON.stringify({ id: target.id, title: savedTitle }),
+    body: JSON.stringify({ id: target.id, title: "via basic" }),
   }),
   ENV
 );
-check("curl-style HTTP Basic auth still works", res.status === 200, `status=${res.status}`);
+check("HTTP Basic is no longer accepted at all", res.status === 401, `status=${res.status}`);
 
+res = await worker.fetch(new Request(BASE + "/admin"), ENV);
+check(
+  "no WWW-Authenticate challenge, so the browser never caches credentials",
+  res.headers.get("WWW-Authenticate") === null,
+  `header=${JSON.stringify(res.headers.get("WWW-Authenticate"))}`
+);
+await res.text();
+
+// 用户名必须真的参与校验：错的用户名不能因为密码对就放行
+const otherUser = { ...ENV, ADMIN_USERNAME: "someone-else" };
+res = await worker.fetch(
+  new Request(BASE + "/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "10.9.9.8" },
+    body: JSON.stringify({ username: "admin", password: PASSWORD }),
+  }),
+  otherUser
+);
+check("a wrong username is rejected even with the right password", res.status === 401, `status=${res.status}`);
+
+res = await worker.fetch(
+  new Request(BASE + "/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "10.9.9.9" },
+    body: JSON.stringify({ username: "someone-else", password: PASSWORD }),
+  }),
+  otherUser
+);
+check("a matching username + password pair is accepted", res.status === 200, `status=${res.status}`);
+
+// 完整走一遍：登录 A → 退出 → 登录 B，旧凭据不能残留在任何地方
+const jarTwo = new Map();
+async function loginAs(user, pass, env2, ip) {
+  const r = await worker.fetch(
+    new Request(BASE + "/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": ip },
+      body: JSON.stringify({ username: user, password: pass }),
+    }),
+    env2 || ENV
+  );
+  const sc = r.headers.get("Set-Cookie") || "";
+  const m = /nav_session=([^;]+)/.exec(sc);
+  if (m) jarTwo.set("nav_session", m[1]);
+  return r.status;
+}
+async function writeAs(title, env2) {
+  const r = await worker.fetch(
+    new Request(BASE + "/api/links", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "nav_session=" + (jarTwo.get("nav_session") || ""),
+      },
+      body: JSON.stringify({ id: target.id, title: title }),
+    }),
+    env2 || ENV
+  );
+  return r.status;
+}
+
+check("log in as account A", (await loginAs("admin", PASSWORD, ENV, "10.1.1.1")) === 200, null);
+check("account A can write", (await writeAs("written by A")) === 200, null);
+
+// 退出：会话必须立刻失效（旧版因为浏览器缓存 Basic 凭据而退不掉）
+res = await post("/api/logout", {});
+const clearedCookie = res.headers.get("Set-Cookie") || "";
+check("logout response clears the cookie", /nav_session=;/.test(clearedCookie) && /Max-Age=0/.test(clearedCookie), clearedCookie);
+jarTwo.delete("nav_session");
+check("logout drops the session", !jarTwo.has("nav_session"), null);
+check("the old session can no longer write", (await writeAs("written by A again")) === 401, null);
+
+// 退出后浏览器仍可能重放旧 Cookie（模拟缓存/历史请求）：必须同样被拒绝
+const staleCookie = { Cookie: "nav_session=" + goodCookie };
 res = await worker.fetch(
   new Request(BASE + "/api/links", {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Basic " + Buffer.from("admin:wrong").toString("base64"),
-    },
-    body: JSON.stringify({ id: target.id, title: "x" }),
+    headers: { "Content-Type": "application/json", ...staleCookie },
+    body: JSON.stringify({ id: target.id, title: "replayed" }),
   }),
   ENV
 );
-check("HTTP Basic with a wrong password is rejected", res.status === 401, `status=${res.status}`);
+check("replaying the old session cookie after logout is rejected", res.status === 401, `status=${res.status}`);
+
+// 换一个账号：整站凭据整体替换（真实部署里就是同时改这两个变量）
+const envB = { ADMIN_USERNAME: "other-admin", ADMIN_PASSWORD: "second-password", NAV: ENV.NAV };
+check("log in as account B", (await loginAs("other-admin", "second-password", envB, "10.1.1.2")) === 200, null);
+check("account B can write with its own session", (await writeAs("written by B", envB)) === 200, null);
+
+// 关键回归：B 的会话在旧配置（A 的凭据）下必须无效，
+// 否则「换了账号旧会话还在」就是这个 bug 的翻版。
+check(
+  "account B's session is invalid under the old credentials",
+  (await writeAs("written by B under A", ENV)) === 401,
+  null
+);
+
+const finalList = await json(await call("/api/links"));
+check(
+  "the last write came from account B (no leaked old credentials)",
+  finalList.find((l) => l.id === target.id).title === "written by B",
+  `title=${finalList.find((l) => l.id === target.id).title}`
+);
+
+// 恢复成原账号，后面的用例继续用
+check("switch back to account A", (await loginAs("admin", PASSWORD, ENV, "10.1.1.3")) === 200, null);
 
 /* =========================================================
    4. Logout
@@ -308,7 +425,7 @@ res = await worker.fetch(new Request(BASE + "/"), noKv);
 check("GET / without the KV binding still renders a page instead of throwing", res.status === 200, `status=${res.status}`);
 
 // 4 段已登出，这里重新登录，才能测到「带鉴权但请求体是坏的」这一层。
-res = await post("/api/login", { password: PASSWORD });
+res = await post("/api/login", { username: "admin", password: PASSWORD });
 check("re-login works after logout", res.status === 200 && jar.has("nav_session"), `status=${res.status}`);
 
 res = await call("/api/links", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{not json" });
@@ -470,7 +587,7 @@ res = await worker.fetch(
   new Request(BASE + "/api/login", {
     method: "POST",
     headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.5" },
-    body: JSON.stringify({ password: PASSWORD }),
+    body: JSON.stringify({ username: "admin", password: PASSWORD }),
   }),
   ENV
 );

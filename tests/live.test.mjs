@@ -4,7 +4,8 @@
  */
 
 const BASE = "http://127.0.0.1:8787";
-const PASSWORD = "admin123"; // default when ADMIN_PASSWORD is not set
+const USERNAME = "admin";
+const PASSWORD = "admin123"; // 来自 .dev.vars
 
 const results = [];
 function check(name, passed, detail) {
@@ -51,14 +52,22 @@ let res = await call("/admin");
 let html = await res.text();
 check("GET /admin returns 200 and a login form", res.status === 200 && html.includes('id="pw"'), `status=${res.status}`);
 check("no WWW-Authenticate (browser will not hijack the page)", res.headers.get("www-authenticate") === null, null);
+check("the login page asks for a username too", html.includes('id="user"'), null);
 
-res = await postJson("/api/login", { password: "definitely-wrong" });
+res = await postJson("/api/login", { username: USERNAME, password: "definitely-wrong" });
 check("wrong password rejected", res.status === 401, `status=${res.status}`);
 
-res = await postJson("/api/login", { password: PASSWORD });
-check("correct password accepted", res.status === 200, `status=${res.status}`);
+res = await postJson("/api/login", { username: "not-the-admin", password: PASSWORD });
+check("wrong username rejected", res.status === 401, `status=${res.status}`);
+
+res = await postJson("/api/login", { username: USERNAME, password: PASSWORD });
+check("correct username + password accepted", res.status === 200, `status=${res.status}`);
 const cookie = res.headers.get("set-cookie") || "";
 check("session cookie set (HttpOnly, SameSite=Strict)", /HttpOnly/.test(cookie) && /SameSite=Strict/.test(cookie), cookie);
+
+res = await call("/api/me");
+const me = await jsonOf(res);
+check("GET /api/me reports the logged-in username", res.status === 200 && me && me.username === USERNAME, JSON.stringify(me));
 
 /* ---------- 2. the reported bug: save ---------- */
 section("2. 保存配置");
@@ -67,7 +76,20 @@ html = await res.text();
 check("admin editor renders when logged in", res.status === 200 && html.includes("btn-save"), `status=${res.status}`);
 
 let links = await jsonOf(await call("/api/links"));
-check("GET /api/links returns the seeded defaults", Array.isArray(links) && links.length === 2, `count=${links && links.length}`);
+check("GET /api/links returns a list", Array.isArray(links) && links.length > 0, `count=${links && links.length}`);
+
+// 清空到已知状态，后面的断言才不依赖本地 KV 里已有的数据
+for (const l of links) {
+  await call("/api/links", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: l.id }),
+  });
+}
+await postJson("/api/links", { title: "测试站点 A", url: "https://a.example.com", desc: "第一个", icon: "📚", color: "#3b82f6" });
+await postJson("/api/links", { title: "测试站点 B", url: "https://b.example.com", desc: "第二个", icon: "🎬", color: "#f97316" });
+links = await jsonOf(await call("/api/links"));
+check("the list is reset to a known state", links.length === 2, `count=${links.length}`);
 
 const target = links[0];
 const NEW_TITLE = "用真实运行时保存的标题 ✅";
@@ -109,6 +131,8 @@ check("the anonymous write changed nothing", afterAnon.find((l) => l.id === targ
 
 /* ---------- 5. logout ---------- */
 section("5. 退出登录");
+// 先复制一份 Cookie，模拟「令牌被复制走」：退出后它必须失效
+const stolen = jar.get("nav_session");
 res = await postJson("/api/logout", {});
 check("logout clears the cookie", /nav_session=;/.test(res.headers.get("set-cookie") || ""), res.headers.get("set-cookie"));
 res = await putJson("/api/links", { id: target.id, title: "x" });
@@ -116,9 +140,16 @@ check("writes after logout are rejected", res.status === 401, `status=${res.stat
 res = await call("/admin");
 check("admin shows the login form again", (await res.text()).includes('id="pw"'), `status=${res.status}`);
 
+const replay = await fetch(BASE + "/api/links", {
+  method: "PUT",
+  headers: { "Content-Type": "application/json", Cookie: "nav_session=" + stolen },
+  body: JSON.stringify({ id: target.id, title: "replayed" }),
+});
+check("a copied token is revoked server-side by logout", replay.status === 401, `status=${replay.status}`);
+
 /* ---------- 6. 不再反复要密码 ---------- */
 section("6. 连续保存不需要再输密码");
-res = await postJson("/api/login", { password: PASSWORD });
+res = await postJson("/api/login", { username: USERNAME, password: PASSWORD });
 const cookie2 = res.headers.get("set-cookie") || "";
 check("session cookie lives 30 days", /Max-Age=2592000/.test(cookie2), cookie2);
 
