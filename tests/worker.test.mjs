@@ -176,6 +176,82 @@ res = await put("/api/links", { id: "does-not-exist", title: "x" });
 check("PUT for a missing id returns 404 with a readable message", res.status === 404, `status=${res.status} body=${JSON.stringify(await json(res))}`);
 
 /* =========================================================
+   2b. 排序
+   ========================================================= */
+section("2b. 卡片排序");
+
+const patch = (p, body, headers) =>
+  call(p, { method: "PATCH", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+
+let order = (await json(await call("/api/links"))).map((l) => l.id);
+check("there are at least two links to reorder", order.length >= 2, `count=${order.length}`);
+
+// 反转顺序
+const reversed = [...order].reverse();
+res = await patch("/api/links", { order: reversed });
+check("PATCH /api/links with a new order succeeds", res.status === 200, `status=${res.status} body=${JSON.stringify(await json(res))}`);
+
+let stored = (await json(await call("/api/links"))).map((l) => l.id);
+check("the new order is persisted", JSON.stringify(stored) === JSON.stringify(reversed), `got=${JSON.stringify(stored)}`);
+
+// 首页必须按新顺序渲染（这才是用户看到的）
+const homeHtml = await (await call("/")).text();
+const firstIdx = homeHtml.indexOf((await json(await call("/api/links")))[0].title);
+const lastTitle = (await json(await call("/api/links")))[order.length - 1].title;
+check("the home page renders cards in the saved order", firstIdx !== -1 && firstIdx < homeHtml.indexOf(lastTitle), null);
+
+// 排序不改动链接内容
+const contentBefore = await json(await call("/api/links"));
+res = await patch("/api/links", { order: order });
+const contentAfter = await json(await call("/api/links"));
+check(
+  "reordering does not alter link contents",
+  JSON.stringify(contentBefore.map((l) => ({ ...l })).sort((a, b) => a.id.localeCompare(b.id))) ===
+    JSON.stringify([...contentAfter].sort((a, b) => a.id.localeCompare(b.id))),
+  null
+);
+
+// 拒绝对不上的排序数据，避免把链接搞丢
+res = await patch("/api/links", { order: order.slice(0, order.length - 1) });
+check("an incomplete order is rejected (409)", res.status === 409, `status=${res.status} body=${JSON.stringify(await json(res))}`);
+
+res = await patch("/api/links", { order: [...order, "ghost-id"] });
+check("an order with an unknown id is rejected", res.status === 409 || res.status === 400, `status=${res.status}`);
+
+res = await patch("/api/links", { order: [order[0], order[0], ...order.slice(2)] });
+check("an order with duplicate ids is rejected", res.status === 409, `status=${res.status}`);
+
+res = await patch("/api/links", { order: "not-an-array" });
+check("a non-array order is rejected (400)", res.status === 400, `status=${res.status}`);
+
+check(
+  "the rejected reorder attempts left the data intact",
+  (await json(await call("/api/links"))).length === order.length,
+  `count=${(await json(await call("/api/links"))).length}`
+);
+
+// 未登录不能排序
+const anonPatch = await worker.fetch(
+  new Request(BASE + "/api/links", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order: reversed }),
+  }),
+  ENV
+);
+check("anonymous PATCH is rejected (401)", anonPatch.status === 401, `status=${anonPatch.status}`);
+
+// 后台页面必须带上排序控件
+const adminPage = await (await call("/admin")).text();
+check("the admin page ships drag handles", adminPage.includes("drag-handle"), null);
+check("the admin page ships up/down buttons", adminPage.includes("btn-up") && adminPage.includes("btn-down"), null);
+check("the admin page has a save-order bar", adminPage.includes('id="btn-order-save"'), null);
+
+// 恢复原顺序，后面的用例继续用
+res = await patch("/api/links", { order: order });
+check("order restored for later tests", res.status === 200, `status=${res.status}`);
+
+/* =========================================================
    3. Authorisation boundaries
    ========================================================= */
 section("3. 鉴权边界");

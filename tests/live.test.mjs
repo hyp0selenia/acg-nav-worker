@@ -118,6 +118,47 @@ res = await call("/api/links", { method: "DELETE", headers: { "Content-Type": "a
 check("DELETE /api/links succeeds", res.status === 200, `status=${res.status}`);
 check("deleted link is gone", !(await jsonOf(await call("/api/links"))).some((l) => l.id === created.id), null);
 
+/* ---------- 3b. 排序 ---------- */
+section("3b. 卡片排序");
+const patchJson = (p, b) => call(p, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+
+const ids = (await jsonOf(await call("/api/links"))).map((l) => l.id);
+const flipped = [...ids].reverse();
+res = await patchJson("/api/links", { order: flipped });
+check("PATCH /api/links reorders", res.status === 200, `status=${res.status}`);
+
+const nowIds = (await jsonOf(await call("/api/links"))).map((l) => l.id);
+check("the new order round-trips from KV", JSON.stringify(nowIds) === JSON.stringify(flipped), `got=${JSON.stringify(nowIds)}`);
+
+// 首页渲染顺序必须跟着变
+const home2 = await (await call("/")).text();
+const all = await jsonOf(await call("/api/links"));
+const positions = all.map((l) => home2.indexOf(l.title));
+check(
+  "the home page renders the cards in the stored order",
+  positions.every((p, i) => p !== -1 && (i === 0 || p > positions[i - 1])),
+  `positions=${JSON.stringify(positions)}`
+);
+
+res = await patchJson("/api/links", { order: flipped.slice(1) });
+check("a partial order is rejected on the real runtime", res.status === 409, `status=${res.status}`);
+
+const anonPatch = await fetch(BASE + "/api/links", {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ order: ids }),
+});
+check("anonymous reorder is rejected", anonPatch.status === 401, `status=${anonPatch.status}`);
+
+check(
+  "the admin page includes the reorder controls",
+  (await (await call("/admin")).text()).includes("btn-order-save"),
+  null
+);
+
+// 还原，后面的用例继续用
+await patchJson("/api/links", { order: ids });
+
 /* ---------- 4. unauthenticated writes ---------- */
 section("4. 未登录写入");
 const anon = await fetch(BASE + "/api/links", {
