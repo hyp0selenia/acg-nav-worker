@@ -908,7 +908,7 @@ async function handleHome(request, env) {
         <div class="avatar" aria-hidden="true">🕊</div>
         <div>
           <h1 class="display">常用站点</h1>
-          <p class="lede">点击卡片即可跳转 ~ (｡･ω･｡)ﾉ♡</p>
+          <p class="lede">点击卡片即可跳转- ( ゜- ゜)つロ</p>
         </div>
       </div>
 
